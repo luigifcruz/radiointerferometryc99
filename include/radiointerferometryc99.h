@@ -5,6 +5,7 @@
 #include <math.h>
 #include "_geodesy.h"
 #include "erfa.h"
+#include "erfam.h"
 
 #define DAYSEC ERFA_DAYSEC
 
