@@ -37,7 +37,7 @@ lib_radiointerferometry_dep = declare_dependency(
 )
 
 executable(
-  'main', 'main.c',
+  'main', 'main.cc',
   dependencies: lib_radiointerferometry_dep
 )
 
