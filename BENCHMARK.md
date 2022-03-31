@@ -1,8 +1,43 @@
 # Benchmark Results
 
-## SETI-NODE8 (AMD EPYC 7352 24-Core @ 48x 2.3GHz)
+## 002
 
-### -O0
+### SETI-NODE8 (AMD EPYC 7352 24-Core @ 48x 2.3GHz)
+
+```
+Run on (48 X 2300 MHz CPU s)
+CPU Caches:
+  L1 Data 32K (x48)
+  L1 Instruction 32K (x48)
+  L2 Unified 512K (x48)
+  L3 Unified 16384K (x16)
+Load Average: 4.13, 2.69, 2.83
+-----------------------------------------------------
+Benchmark           Time             CPU   Iterations
+-----------------------------------------------------
+STANDARD         2.65 ms         2.65 ms          260
+```
+
+### Laptop (Apple M1 Pro)
+
+```
+Run on (8 X 24.121 MHz CPU s)
+CPU Caches:
+  L1 Data 64 KiB (x8)
+  L1 Instruction 128 KiB (x8)
+  L2 Unified 4096 KiB (x4)
+Load Average: 1.91, 1.87, 1.87
+-----------------------------------------------------
+Benchmark           Time             CPU   Iterations
+-----------------------------------------------------
+STANDARD        0.897 ms        0.897 ms          642
+```
+
+## #001
+
+### SETI-NODE8 (AMD EPYC 7352 24-Core @ 48x 2.3GHz)
+
+#### -O0
 ```
 CPU Caches:
   L1 Data 32K (x48)
@@ -16,7 +51,7 @@ Benchmark                               Time             CPU   Iterations
 STANDARD/iterations:1073741824       70.6 ns         70.6 ns   1073741824
 ```
 
-### -O3
+#### -O3
 ```
 CPU Caches:
   L1 Data 32K (x48)
@@ -30,9 +65,9 @@ Benchmark                               Time             CPU   Iterations
 STANDARD/iterations:1073741824       41.0 ns         41.0 ns   1073741824
 ```
 
-## Laptop (Apple M1 Pro)
+### Laptop (Apple M1 Pro)
 
-### -O0
+#### -O0
 ```
 CPU Caches:
   L1 Data 64 KiB (x8)
@@ -45,7 +80,7 @@ Benchmark                               Time             CPU   Iterations
 STANDARD/iterations:1073741824       28.7 ns         28.7 ns   1073741824
 ```
 
-### -O3
+#### -O3
 ```
 CPU Caches:
   L1 Data 64 KiB (x8)
