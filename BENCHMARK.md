@@ -1,5 +1,38 @@
 # Benchmark Results
 
+## 003
+
+### SETI-NODE8 (AMD EPYC 7352 24-Core @ 48x 2.3GHz)
+
+```
+Run on (48 X 2300 MHz CPU s)
+CPU Caches:
+  L1 Data 32K (x48)
+  L1 Instruction 32K (x48)
+  L2 Unified 512K (x48)
+  L3 Unified 16384K (x16)
+Load Average: 12.49, 5.59, 3.54
+--------------------------------------------------------------------
+Benchmark                          Time             CPU   Iterations
+--------------------------------------------------------------------
+STANDARD/iterations:10000      0.143 ms        0.143 ms        10000
+```
+
+### Laptop (Apple M1 Pro)
+
+```
+Run on (8 X 24.1207 MHz CPU s)
+CPU Caches:
+  L1 Data 64 KiB (x8)
+  L1 Instruction 128 KiB (x8)
+  L2 Unified 4096 KiB (x4)
+Load Average: 1.20, 1.41, 1.69
+--------------------------------------------------------------------
+Benchmark                          Time             CPU   Iterations
+--------------------------------------------------------------------
+STANDARD/iterations:10000      0.052 ms        0.052 ms        10000
+```
+
 ## 002
 
 ### SETI-NODE8 (AMD EPYC 7352 24-Core @ 48x 2.3GHz)
