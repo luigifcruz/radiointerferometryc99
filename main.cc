@@ -37,6 +37,12 @@ typedef struct {
     double dec;
 } RA_DEC;
 
+#pragma pack(1)
+typedef struct {
+    double ha;
+    double dec;
+} HA_DEC;
+
 static XYZ antennas[] = {
     {-2524041.5388905862, -4123587.965024342, 4147646.4222955606},    // 1c 
     {-2524068.187873109, -4123558.735413135, 4147656.21282186},       // 1e 
@@ -89,27 +95,27 @@ static void STANDARD(benchmark::State& state) {
     size_t n_beams = sizeof(beams) / sizeof(RA_DEC);
 
     // Reference Position (Array Center, LLA).
-    LLA reference_pos = {
+    LLA reference_lla = {
         calc_deg2rad(-121.470736),  // Longitude
         calc_deg2rad(40.817431),    // Latitude
         1019.222                    // Altitude
     };
 
     // Allocate memory.
-    double* receiver_xyz = (double*)malloc(sizeof(antennas));
+    XYZ* receiver_xyz = (XYZ*)malloc(sizeof(UVW) * n_antennas);
     if (receiver_xyz == NULL) {
         printf("Error allocating memory.\n");
         exit(0);
     }
-    memcpy(receiver_xyz, antennas, sizeof(antennas));
+    memcpy(receiver_xyz, antennas, n_antennas);
 
-    double* boresight_uvw = (double*)malloc(sizeof(antennas));
+    UVW* boresight_uvw = (UVW*)malloc(sizeof(UVW) * n_antennas);
     if (receiver_xyz == NULL) {
         printf("Error allocating memory.\n");
         exit(0);
     }
 
-    double* source_uvw = (double*)malloc(sizeof(antennas));
+    UVW* source_uvw = (UVW*)malloc(sizeof(UVW) * n_antennas);
     if (receiver_xyz == NULL) {
         printf("Error allocating memory.\n");
         exit(0);
@@ -127,40 +133,100 @@ static void STANDARD(benchmark::State& state) {
         exit(0);
     }
 
+    // [Documentation - Phasors Processor] 
+    //
+    // [Legend]:
+    //      - A: Number of Antennas. 
+    //      - B: Number of Beams.
+    //      - N: Number of Blocks.
+    //
+    // [Pipeline]:
+    // 1. Start with Earth Centered Antenna Positions (ECEF).
+    // 2. Translate Earth Centered Antenna Positions (ECEF) to Array Centered Antenna Positions (XYZ).
+    //      - Runs on initialization for each antenna (A).
+    //      - Based on "calc_position_to_xyz_frame_from_ecef" method.
+    //      - Depends on the Array Center Reference Longitude, Latitude, and Altitude values.
+    // 3. Rotate Array Centered Antenna Position (XYZ) towards Boresight (UVW).
+    //      - Runs on each block for each antenna (A*N). 
+    //      - Based on "calc_position_to_uvw_frame_from_xyz" method.
+    //      - Depends on the Hour Angle & Declination values of the Boresight. 
+    // 4. Calculate time delay on Boresight.
+    //      - Runs on each block for each antenna (A*N). 
+    //      - Defined by Ti = (Wi - Wr) / C.
+    //          - Ti = Time Delay (s) of the signal from Reference Antenna.
+    //          - Wi = Distance (m) of the current antenna to the boresight.
+    //          - Wr = Distance (m) of the reference antenna to the boresight.
+    //          - C  = Speed of Light (m/s).
+    //      - Depends on the Array Centered Antenna Position (XYZ) and Hour Angle & Declination of the Boresight.
+    // 5. Generate Hour Angle & Declination from RA & Declination according to time.
+    //      - Part A runs on each block (N), and Part B runs on each block for every beam (B*N).
+    //      - Based on "calc_ha_dec_rad_a" (Part A) and "calc_ha_dec_rad_b" (Part B) methods. 
+    //      - Depends on the RA & Declination values of the Source.  
+    // 6. Rotate Array Centered Antenna Position (XYZ) towards Source (UVW).
+    //      - Runs on each block for each antenna for every beam (A*B*N). 
+    //      - Based on "calc_position_to_uvw_frame_from_xyz" method.
+    //      - Depends on the Hour Angle & Declination values of the Source. 
+    // 7. Calculate time delay on Source.
+    //      - Runs on each block for each antenna for every beam (A*B*N).
+    //      - Defined by DTi = Ti - ((Wi - Wr) / C)
+    //          - DTi = Time Delay (s) from Boresight to Source.
+    //          - Ti = Time Delay (s) of the signal from Reference Antenna.
+    //          - Wi = Distance (m) of the current antenna to the signal source.
+    //          - Wr = Distance (m) of the reference antenna to the signal source.
+    //          - C  = Speed of Light (m/s).
+
+    // Copy Earth Centered XYZ Antenna Coordinates (XYZ) to Receiver (UVW).
+    memcpy(
+        (double*)receiver_xyz,
+        antennas,
+        sizeof(antennas)
+    );
+
+    // Translate Antenna Position (LLA) to Reference Position (XYZ).
+    calc_position_to_xyz_frame_from_ecef(
+        (double*)receiver_xyz,
+        n_antennas,
+        reference_lla.lon,
+        reference_lla.lat,
+        reference_lla.alt
+    );
+
     for (auto _ : state) {
-        // Translate Antenna Position (LLA) to Reference Position (XYZ).
-        calc_position_to_xyz_frame_from_ecef(
-            receiver_xyz,
-            n_antennas,
-            reference_pos.lon,
-            reference_pos.lat,
-            reference_pos.alt
-        );
+        // Boresight Position.
+        HA_DEC boresight_ha_dec = {0.0, 0.0};
 
         // Copy Reference Position (XYZ) to Boresight Position (UVW).
         memcpy(
-            boresight_uvw,
+            (double*)boresight_uvw,
             receiver_xyz,
             sizeof(antennas)
         );
 
-        // Boresight Position.
-        double boresight_hour_angle_rad = 0.0;
-        double boresight_declination_rad = 0.0;
-
         // Rotate Reference Position (UVW) towards Boresight (HA, Dec).
         calc_position_to_uvw_frame_from_xyz(
-            boresight_uvw,
+            (double*)boresight_uvw,
             n_antennas,
-            boresight_hour_angle_rad,
-            boresight_declination_rad,
-            reference_pos.lon
+            boresight_ha_dec.ha,
+            boresight_ha_dec.dec,
+            reference_lla.lon
         );
 
         // Calculate delay for boresight (Ti = (Wi - Wr) / C).
         for (size_t i = 0; i < n_antennas; i++) {
-            t[i] = (((UVW*)boresight_uvw)[i].W - ((UVW*)boresight_uvw)[0].W) / C; 
+            t[i] = (boresight_uvw[i].W - boresight_uvw[0].W) / C; 
         }
+
+        // Convert RA to Hour Angle (Part A).
+        eraASTROM astrom;
+
+        calc_ha_dec_rad_a(
+            reference_lla.lon,
+            reference_lla.lat,
+            reference_lla.alt,
+            2400000.5,
+            0.3,
+            &astrom
+        );
 
         for (size_t j = 0; j < n_beams; j++) {
             // Copy Reference Position (XYZ) to Target Position (UVW).
@@ -170,38 +236,41 @@ static void STANDARD(benchmark::State& state) {
                 sizeof(antennas)
             );
 
-            // Convert RA to Hour Angle.
-            double hour_angle_rad = 0.0;
-            double declination_rad = 0.0;
+            // Convert RA to Hour Angle (Part B).
+            HA_DEC target_ha_dec = {0.0, 0.0};
 
-            calc_ha_dec_rad(
+            calc_ha_dec_rad_b(
                 beams[j].ra,
                 beams[j].dec,
-                reference_pos.lon,
-                reference_pos.lat,
-                reference_pos.alt,
-                2400000.5,
-                0.3,
-                &hour_angle_rad,
-                &declination_rad
-            );
+                &astrom, 
+                &target_ha_dec.ha,
+                &target_ha_dec.dec
+            ); 
 
             // Rotate Reference Position (UVW) towards Target (HA, Dec).
             calc_position_to_uvw_frame_from_xyz(
-                source_uvw,
+                (double*)source_uvw,
                 n_antennas,
-                hour_angle_rad, 
-                declination_rad,
-                reference_pos.lon
+                target_ha_dec.ha, 
+                target_ha_dec.dec,
+                reference_lla.lon
             );
 
             // Calculate delay for off-center source and subtract from boresight (TPi = Ti - ((WPi - WPr) / C)).
             for (size_t i = 0; i < n_antennas; i++) {
-                dt[(j * n_beams) + i] = t[i] - ((((UVW*)source_uvw)[i].W - ((UVW*)source_uvw)[0].W) / C); 
+                dt[(j * n_beams) + i] = t[i] - ((source_uvw[i].W - source_uvw[0].W) / C); 
             }
         }
     }
+
+    free(receiver_xyz);
+    free(boresight_uvw);
+    free(source_uvw);
+    free(t);
+    free(dt);
 }
-BENCHMARK(STANDARD)->Unit(benchmark::TimeUnit::kMillisecond);
+
+BENCHMARK(STANDARD)->Unit(benchmark::TimeUnit::kMillisecond)->Iterations(10000);
+//BENCHMARK(STANDARD)->Unit(benchmark::TimeUnit::kMillisecond)->Iterations(1);
 
 BENCHMARK_MAIN();

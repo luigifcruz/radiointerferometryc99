@@ -48,6 +48,23 @@ double calc_hypotenuse(double* position, int dims);
 
 void calc_frame_translate(double* positions, int position_count, double translation[3]);
 
+void calc_ha_dec_rad_a(
+	double longitude_rad,
+	double latitude_rad,
+	double altitude,
+	double timemjd,
+	double dut1,
+    eraASTROM* astrom
+);
+
+void calc_ha_dec_rad_b(
+	double ra_rad,
+	double dec_rad,
+    eraASTROM* astrom,
+	double* hour_angle_rad,
+	double* declination_rad
+);
+
 void calc_ecef_from_lla(
 	double ecef[3],
 	const double longitude_rad,
