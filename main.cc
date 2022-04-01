@@ -168,11 +168,11 @@ static void STANDARD(benchmark::State& state) {
     //      - Depends on the Hour Angle & Declination values of the Source. 
     // 7. Calculate time delay on Source.
     //      - Runs on each block for each antenna for every beam (A*B*N).
-    //      - Defined by DTi = Ti - ((Wi - Wr) / C)
-    //          - DTi = Time Delay (s) from Boresight to Source.
+    //      - Defined by TPi = Ti - ((WPi - WPr) / C).
+    //          - TPi = Time Delay (s) from Boresight to Source.
     //          - Ti = Time Delay (s) of the signal from Reference Antenna.
-    //          - Wi = Distance (m) of the current antenna to the signal source.
-    //          - Wr = Distance (m) of the reference antenna to the signal source.
+    //          - WPi = Distance (m) of the current antenna to the signal source.
+    //          - WPr = Distance (m) of the reference antenna to the signal source.
     //          - C  = Speed of Light (m/s).
 
     // Copy Earth Centered XYZ Antenna Coordinates (XYZ) to Receiver (UVW).
