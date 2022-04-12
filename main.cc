@@ -67,27 +67,10 @@ static XYZ antennas[] = {
 };
 
 static RA_DEC beams[] = {
-    {0.0, 1.0},
-    {1.0, 0.0},
-    {2.0, 1.0},
-    {4.0, 0.0},
-    {5.0, 1.0},
-    {0.0, 1.0},
-    {1.0, 0.0},
-    {2.0, 1.0},
-    {4.0, 0.0},
-    {5.0, 1.0},
-    {0.0, 1.0},
-    {1.0, 0.0},
-    {2.0, 1.0},
-    {4.0, 0.0},
-    {5.0, 1.0},
-    {0.0, 1.0},
-    {1.0, 0.0},
-    {2.0, 1.0},
-    {4.0, 0.0},
-    {5.0, 1.0},
+    {0.64169, 1.079896295},
 };
+
+char* names[] = {"1C", "1E", "1G", "1H", "1K", "2A", "2B", "2C", "2E", "2H", "2J", "2L", "2K", "2M", "3D", "3L", "4E", "4G", "4J", "5B"};
 
 static void STANDARD(benchmark::State& state) {
     // Cache metadata.
@@ -96,9 +79,9 @@ static void STANDARD(benchmark::State& state) {
 
     // Reference Position (Array Center, LLA).
     LLA reference_lla = {
-        calc_deg2rad(-121.470736),  // Longitude
-        calc_deg2rad(40.817431),    // Latitude
-        1019.222                    // Altitude
+        calc_deg2rad(-121.470733),  // Longitude
+        calc_deg2rad(40.815987),    // Latitude
+        1020.86                     // Altitude
     };
 
     // Allocate memory.
@@ -107,7 +90,6 @@ static void STANDARD(benchmark::State& state) {
         printf("Error allocating memory.\n");
         exit(0);
     }
-    memcpy(receiver_xyz, antennas, n_antennas);
 
     UVW* boresight_uvw = (UVW*)malloc(sizeof(UVW) * n_antennas);
     if (receiver_xyz == NULL) {
@@ -175,25 +157,28 @@ static void STANDARD(benchmark::State& state) {
     //          - WPr = Distance (m) of the reference antenna to the signal source.
     //          - C  = Speed of Light (m/s).
 
-    // Copy Earth Centered XYZ Antenna Coordinates (XYZ) to Receiver (UVW).
-    memcpy(
-        (double*)receiver_xyz,
-        antennas,
-        sizeof(antennas)
-    );
-
     // Translate Antenna Position (LLA) to Reference Position (XYZ).
-    calc_position_to_xyz_frame_from_ecef(
-        (double*)receiver_xyz,
-        n_antennas,
-        reference_lla.lon,
-        reference_lla.lat,
-        reference_lla.alt
-    );
+    for (size_t i = 0; i < n_antennas; i++) {
+        receiver_xyz[i].X = antennas[i].X - antennas[0].X;
+        receiver_xyz[i].Y = antennas[i].Y - antennas[0].Y;
+        receiver_xyz[i].Z = antennas[i].Z - antennas[0].Z;
+    }
 
     for (auto _ : state) {
         // Boresight Position.
         HA_DEC boresight_ha_dec = {0.0, 0.0};
+
+        calc_ha_dec_rad(
+            beams[0].ra,
+            beams[0].dec,
+            reference_lla.lon,
+            reference_lla.lat,
+            reference_lla.alt,
+            (1649366473.0/ 86400) + 2440587.5,
+            0.0,
+            &boresight_ha_dec.ha,
+            &boresight_ha_dec.dec
+        );
 
         // Copy Reference Position (XYZ) to Boresight Position (UVW).
         memcpy(
@@ -212,8 +197,9 @@ static void STANDARD(benchmark::State& state) {
         );
 
         // Calculate delay for boresight (Ti = (Wi - Wr) / C).
+        printf("HA: %lf, DEC: %lf\n", boresight_ha_dec.ha, boresight_ha_dec.dec);
         for (size_t i = 0; i < n_antennas; i++) {
-            t[i] = (boresight_uvw[i].W - boresight_uvw[0].W) / C; 
+            printf("%s: U: %lf V: %lf W: %lf\n", names[i], boresight_uvw[i].U, boresight_uvw[i].V, boresight_uvw[i].W);
         }
 
         // Convert RA to Hour Angle (Part A).
@@ -270,7 +256,7 @@ static void STANDARD(benchmark::State& state) {
     free(dt);
 }
 
-BENCHMARK(STANDARD)->Unit(benchmark::TimeUnit::kMillisecond)->Iterations(10000);
-//BENCHMARK(STANDARD)->Unit(benchmark::TimeUnit::kMillisecond)->Iterations(1);
+//BENCHMARK(STANDARD)->Unit(benchmark::TimeUnit::kMillisecond)->Iterations(10000);
+BENCHMARK(STANDARD)->Unit(benchmark::TimeUnit::kMillisecond)->Iterations(1);
 
 BENCHMARK_MAIN();
